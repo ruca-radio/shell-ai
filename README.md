@@ -107,6 +107,9 @@ The AI can use these tools autonomously:
 | `list_files` | Browse directories |
 | `search_files` | Find files by pattern or content |
 | `get_file_info` | Get file metadata |
+| `git_status` | Show branch and changed files |
+| `git_diff` | Show file changes |
+| `git_log` | Show recent commits |
 
 ## Examples
 
@@ -135,6 +138,15 @@ q "run npm install in background"
 q "start the dev server in background"
 q "check task_1 status"
 q "kill task_2"
+```
+
+### Git Operations
+
+```bash
+q "what changed since last commit?"
+q "show me recent commits"
+q "what's the git status?"
+q "diff the staged changes"
 ```
 
 ### Code Questions

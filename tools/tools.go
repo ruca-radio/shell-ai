@@ -218,6 +218,50 @@ var AvailableTools = []Tool{
 			}`),
 		},
 	},
+	{
+		Type: "function",
+		Function: ToolFunction{
+			Name:        "git_status",
+			Description: "Get git repository status: branch, changed files, staged changes. Only works in git repositories.",
+			Parameters: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"path": {"type": "string", "description": "Repository path (defaults to current directory)"}
+				},
+				"additionalProperties": false
+			}`),
+		},
+	},
+	{
+		Type: "function",
+		Function: ToolFunction{
+			Name:        "git_diff",
+			Description: "Show git diff of changed files. Can diff staged, unstaged, or specific files.",
+			Parameters: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"staged": {"type": "boolean", "description": "Show staged changes only"},
+					"file": {"type": "string", "description": "Specific file to diff"}
+				},
+				"additionalProperties": false
+			}`),
+		},
+	},
+	{
+		Type: "function",
+		Function: ToolFunction{
+			Name:        "git_log",
+			Description: "Show recent git commit history.",
+			Parameters: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"count": {"type": "integer", "description": "Number of commits to show (default 10)"},
+					"oneline": {"type": "boolean", "description": "Compact one-line format"}
+				},
+				"additionalProperties": false
+			}`),
+		},
+	},
 }
 
 func ExecuteTool(name string, arguments string) (string, error) {
@@ -249,6 +293,12 @@ func ExecuteTool(name string, arguments string) (string, error) {
 		return searchFiles(args)
 	case "get_file_info":
 		return getFileInfo(args)
+	case "git_status":
+		return gitStatus(args)
+	case "git_diff":
+		return gitDiff(args)
+	case "git_log":
+		return gitLog(args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
@@ -665,4 +715,97 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+func gitStatus(args map[string]interface{}) (string, error) {
+	path := "."
+	if p, ok := args["path"].(string); ok && p != "" {
+		path = p
+	}
+
+	cmd := exec.Command("git", "-C", path, "status", "--porcelain", "-b")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if strings.Contains(string(output), "not a git repository") {
+			return "Not a git repository", nil
+		}
+		return "", fmt.Errorf("git status failed: %s", string(output))
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 {
+		return "Clean working directory", nil
+	}
+
+	var result strings.Builder
+	for _, line := range lines {
+		if strings.HasPrefix(line, "## ") {
+			branch := strings.TrimPrefix(line, "## ")
+			result.WriteString(fmt.Sprintf("Branch: %s\n", branch))
+		} else if line != "" {
+			status := line[:2]
+			file := strings.TrimSpace(line[2:])
+			switch {
+			case status[0] == 'M' || status[1] == 'M':
+				result.WriteString(fmt.Sprintf("  Modified: %s\n", file))
+			case status[0] == 'A':
+				result.WriteString(fmt.Sprintf("  Added: %s\n", file))
+			case status[0] == 'D' || status[1] == 'D':
+				result.WriteString(fmt.Sprintf("  Deleted: %s\n", file))
+			case status == "??":
+				result.WriteString(fmt.Sprintf("  Untracked: %s\n", file))
+			case status[0] == 'R':
+				result.WriteString(fmt.Sprintf("  Renamed: %s\n", file))
+			default:
+				result.WriteString(fmt.Sprintf("  %s: %s\n", status, file))
+			}
+		}
+	}
+
+	return result.String(), nil
+}
+
+func gitDiff(args map[string]interface{}) (string, error) {
+	gitArgs := []string{"diff", "--stat"}
+
+	if staged, ok := args["staged"].(bool); ok && staged {
+		gitArgs = append(gitArgs, "--cached")
+	}
+
+	if file, ok := args["file"].(string); ok && file != "" {
+		gitArgs = append(gitArgs, "--", file)
+	}
+
+	cmd := exec.Command("git", gitArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git diff failed: %s", string(output))
+	}
+
+	result := strings.TrimSpace(string(output))
+	if result == "" {
+		return "No changes", nil
+	}
+
+	return result, nil
+}
+
+func gitLog(args map[string]interface{}) (string, error) {
+	count := 10
+	if c, ok := args["count"].(float64); ok {
+		count = int(c)
+	}
+
+	format := "%h %s (%cr) <%an>"
+	if oneline, ok := args["oneline"].(bool); ok && oneline {
+		format = "%h %s"
+	}
+
+	cmd := exec.Command("git", "log", fmt.Sprintf("-n%d", count), fmt.Sprintf("--format=%s", format))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git log failed: %s", string(output))
+	}
+
+	return strings.TrimSpace(string(output)), nil
 }

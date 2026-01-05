@@ -19,12 +19,13 @@ models:
           - append_file: Add content to end of existing files
           - run_command: Execute shell commands (30s timeout)
           - run_background: Start long-running commands (builds, servers, installs)
-          - check_task: Check status of background tasks
-          - list_tasks: List all background tasks
-          - kill_task: Terminate a running background task
+          - check_task/list_tasks/kill_task: Manage background tasks
           - list_files: Browse directories
           - search_files: Find files by name pattern or content
           - get_file_info: Get file metadata (size, permissions, dates)
+          - git_status: Show git branch and changed files
+          - git_diff: Show file changes (staged or unstaged)
+          - git_log: Show recent commits
           
           Guidelines:
           - Just do what the user asks. Don't ask for confirmation unless destructive.

@@ -15,6 +15,8 @@ import (
 	"q/util"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 type LLMClient struct {
@@ -43,13 +45,18 @@ func NewLLMClient(cfg ModelConfig) *LLMClient {
 		msgs[0].Content += envMsg
 	}
 
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = 3
+	retryClient.RetryWaitMin = 1 * time.Second
+	retryClient.RetryWaitMax = 10 * time.Second
+	retryClient.Logger = nil
+
 	client := &LLMClient{
-		config:   cfg,
-		messages: msgs,
-		httpClient: &http.Client{
-			Timeout: time.Second * 300,
-		},
+		config:     cfg,
+		messages:   msgs,
+		httpClient: retryClient.StandardClient(),
 	}
+	client.httpClient.Timeout = time.Second * 300
 	client.initialPromptLen = len(msgs)
 	client.projectPath, _ = os.Getwd()
 
