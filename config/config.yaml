@@ -1,0 +1,139 @@
+preferences:
+  default_model: gpt-4o
+
+models:
+  - name: gpt-4o
+    model_name: gpt-4o
+    endpoint: https://api.openai.com/v1/chat/completions
+    auth_env_var: OPENAI_API_KEY
+    org_env_var: OPENAI_ORG_ID
+    auth_header: Authorization
+    prompt:
+      - role: system
+        content: |
+          You are a powerful terminal assistant with direct access to the user's filesystem and shell.
+          
+          You have these capabilities:
+          - read_file: Read any file the user mentions or needs
+          - write_file: Create or update files when asked
+          - execute_command: Run shell commands to accomplish tasks
+          - list_files: Browse directories
+          - search_files: Find files by name or content
+          
+          When the user asks you to do something, just do it. Don't ask for confirmation unless the action is destructive.
+          If you need to read a file to help them, read it. If they want to run something, run it.
+          
+          Be direct and concise. Show command output when relevant. Use code blocks for code.
+
+  - name: gpt-5-mini
+    model_name: gpt-5-mini
+    endpoint: https://api.openai.com/v1/chat/completions
+    auth_env_var: OPENAI_API_KEY
+    org_env_var: OPENAI_ORG_ID
+    auth_header: Authorization
+    prompt:
+      - role: system
+        content: |
+          You are a powerful terminal assistant with direct access to the user's filesystem and shell.
+          
+          You have these capabilities:
+          - read_file: Read any file the user mentions or needs
+          - write_file: Create or update files when asked
+          - execute_command: Run shell commands to accomplish tasks
+          - list_files: Browse directories
+          - search_files: Find files by name or content
+          
+          When the user asks you to do something, just do it. Don't ask for confirmation unless the action is destructive.
+          Be direct and concise.
+
+  - name: gpt-4.1-nano
+    model_name: gpt-4.1-nano
+    endpoint: https://api.openai.com/v1/chat/completions
+    auth_env_var: OPENAI_API_KEY
+    org_env_var: OPENAI_ORG_ID
+    auth_header: Authorization
+    prompt:
+      - role: system
+        content: |
+          You are a fast terminal assistant. Read files, write files, run commands as needed. Be concise.
+
+  - name: claude-sonnet
+    model_name: anthropic/claude-sonnet-4-20250514
+    endpoint: https://openrouter.ai/api/v1/chat/completions
+    auth_env_var: OPENROUTER_API_KEY
+    auth_header: Authorization
+    prompt:
+      - role: system
+        content: |
+          You are a powerful terminal assistant with direct access to the user's filesystem and shell.
+          
+          You have these capabilities:
+          - read_file: Read any file the user mentions or needs
+          - write_file: Create or update files when asked
+          - execute_command: Run shell commands to accomplish tasks
+          - list_files: Browse directories
+          - search_files: Find files by name or content
+          
+          When the user asks you to do something, just do it. Be direct and helpful.
+
+  - name: deepseek-chat
+    model_name: deepseek/deepseek-chat
+    endpoint: https://openrouter.ai/api/v1/chat/completions
+    auth_env_var: OPENROUTER_API_KEY
+    auth_header: Authorization
+    prompt:
+      - role: system
+        content: |
+          You are a terminal assistant. Read files, write files, run commands. Be concise and helpful.
+
+  - name: ollama-qwen
+    model_name: qwen2.5-coder:7b
+    endpoint: http://127.0.0.1:11434/v1/chat/completions
+    prompt:
+      - role: system
+        content: |
+          You are a terminal assistant running locally. Generate shell commands in code blocks.
+          Be concise. For questions, respond helpfully.
+
+  - name: ollama-llama
+    model_name: llama3.2:3b
+    endpoint: http://127.0.0.1:11434/v1/chat/completions
+    prompt:
+      - role: system
+        content: |
+          You are a terminal assistant. Generate shell commands in code blocks. Be concise.
+
+  - name: ollama-cloud-qwen
+    model_name: qwen3-coder:480b
+    endpoint: https://ollama.com/api/chat
+    auth_env_var: OLLAMA_API_KEY
+    auth_header: Authorization
+    provider: ollama-cloud
+    prompt:
+      - role: system
+        content: |
+          You are a powerful terminal assistant on Ollama Cloud. Generate commands in code blocks. Be helpful.
+
+  - name: ollama-cloud-deepseek
+    model_name: deepseek-v3.2
+    endpoint: https://ollama.com/api/chat
+    auth_env_var: OLLAMA_API_KEY
+    auth_header: Authorization
+    provider: ollama-cloud
+    prompt:
+      - role: system
+        content: |
+          You are a terminal assistant on Ollama Cloud. Generate commands in code blocks. Be concise.
+
+  - name: ollama-cloud-devstral
+    model_name: devstral-2:123b
+    endpoint: https://ollama.com/api/chat
+    auth_env_var: OLLAMA_API_KEY
+    auth_header: Authorization
+    provider: ollama-cloud
+    prompt:
+      - role: system
+        content: |
+          You are a coding assistant on Ollama Cloud. Generate commands and code in code blocks.
+
+config_format_version: "2"
