@@ -41,6 +41,8 @@ type BackgroundTask struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Done      bool
+	cancel    context.CancelFunc
+	cmd       *exec.Cmd
 }
 
 var (
@@ -185,6 +187,37 @@ var AvailableTools = []Tool{
 			}`),
 		},
 	},
+	{
+		Type: "function",
+		Function: ToolFunction{
+			Name:        "append_file",
+			Description: "Append content to the end of an existing file.",
+			Parameters: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"path": {"type": "string", "description": "Path to the file"},
+					"content": {"type": "string", "description": "Content to append"}
+				},
+				"required": ["path", "content"],
+				"additionalProperties": false
+			}`),
+		},
+	},
+	{
+		Type: "function",
+		Function: ToolFunction{
+			Name:        "get_file_info",
+			Description: "Get file metadata: size, permissions, modification time.",
+			Parameters: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"path": {"type": "string", "description": "Path to the file"}
+				},
+				"required": ["path"],
+				"additionalProperties": false
+			}`),
+		},
+	},
 }
 
 func ExecuteTool(name string, arguments string) (string, error) {
@@ -198,6 +231,8 @@ func ExecuteTool(name string, arguments string) (string, error) {
 		return readFile(args)
 	case "write_file":
 		return writeFile(args)
+	case "append_file":
+		return appendFile(args)
 	case "run_command":
 		return runCommand(args)
 	case "run_background":
@@ -212,6 +247,8 @@ func ExecuteTool(name string, arguments string) (string, error) {
 		return listFiles(args)
 	case "search_files":
 		return searchFiles(args)
+	case "get_file_info":
+		return getFileInfo(args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
@@ -271,6 +308,61 @@ func writeFile(args map[string]interface{}) (string, error) {
 	return fmt.Sprintf("Wrote %d bytes to %s", len(content), absPath), nil
 }
 
+func appendFile(args map[string]interface{}) (string, error) {
+	path, ok := args["path"].(string)
+	if !ok {
+		return "", fmt.Errorf("path required")
+	}
+	content, ok := args["content"].(string)
+	if !ok {
+		return "", fmt.Errorf("content required")
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	f, err := os.OpenFile(absPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	n, err := f.WriteString(content)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Appended %d bytes to %s", n, absPath), nil
+}
+
+func getFileInfo(args map[string]interface{}) (string, error) {
+	path, ok := args["path"].(string)
+	if !ok {
+		return "", fmt.Errorf("path required")
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot access %s: %w", path, err)
+	}
+
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("Path: %s\n", absPath))
+	result.WriteString(fmt.Sprintf("Size: %d bytes\n", info.Size()))
+	result.WriteString(fmt.Sprintf("Mode: %s\n", info.Mode()))
+	result.WriteString(fmt.Sprintf("Modified: %s\n", info.ModTime().Format(time.RFC3339)))
+	result.WriteString(fmt.Sprintf("IsDir: %t\n", info.IsDir()))
+
+	return result.String(), nil
+}
+
 func runCommand(args map[string]interface{}) (string, error) {
 	command, ok := args["command"].(string)
 	if !ok {
@@ -309,6 +401,15 @@ func runBackground(args map[string]interface{}) (string, error) {
 		desc = d
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "bash"
+	}
+
+	cmd := exec.CommandContext(ctx, shell, "-c", command)
+
 	taskMutex.Lock()
 	taskCounter++
 	taskID := fmt.Sprintf("task_%d", taskCounter)
@@ -317,24 +418,23 @@ func runBackground(args map[string]interface{}) (string, error) {
 		Command:   command,
 		Status:    "running",
 		StartTime: time.Now(),
+		cancel:    cancel,
+		cmd:       cmd,
 	}
 	backgroundTasks[taskID] = task
 	taskMutex.Unlock()
 
 	go func() {
-		shell := os.Getenv("SHELL")
-		if shell == "" {
-			shell = "bash"
-		}
-
-		cmd := exec.Command(shell, "-c", command)
 		output, err := cmd.CombinedOutput()
 
 		taskMutex.Lock()
 		task.Output = string(output)
 		task.EndTime = time.Now()
 		task.Done = true
-		if err != nil {
+		if ctx.Err() == context.Canceled {
+			task.Status = "killed"
+			task.Error = "Killed by user"
+		} else if err != nil {
 			task.Status = "failed"
 			task.Error = err.Error()
 		} else {
@@ -411,11 +511,8 @@ func killTask(args map[string]interface{}) (string, error) {
 
 	taskMutex.Lock()
 	task, exists := backgroundTasks[taskID]
-	if exists && !task.Done {
-		task.Status = "killed"
-		task.Done = true
-		task.EndTime = time.Now()
-		task.Error = "Killed by user"
+	if exists && !task.Done && task.cancel != nil {
+		task.cancel()
 	}
 	taskMutex.Unlock()
 
@@ -423,7 +520,11 @@ func killTask(args map[string]interface{}) (string, error) {
 		return "", fmt.Errorf("task %s not found", taskID)
 	}
 
-	return fmt.Sprintf("Task %s marked as killed", taskID), nil
+	if task.Done {
+		return fmt.Sprintf("Task %s already finished with status: %s", taskID, task.Status), nil
+	}
+
+	return fmt.Sprintf("Task %s killed", taskID), nil
 }
 
 func listFiles(args map[string]interface{}) (string, error) {
@@ -475,6 +576,33 @@ func listFiles(args map[string]interface{}) (string, error) {
 	return strings.Join(files, "\n"), nil
 }
 
+var skipDirs = map[string]bool{
+	".git": true, "node_modules": true, ".svn": true, ".hg": true,
+	"__pycache__": true, ".cache": true, "vendor": true, ".idea": true,
+	".vscode": true, "dist": true, "build": true, ".next": true,
+}
+
+func isBinaryFile(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+
+	buf := make([]byte, 512)
+	n, err := f.Read(buf)
+	if err != nil || n == 0 {
+		return false
+	}
+
+	for _, b := range buf[:n] {
+		if b == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func searchFiles(args map[string]interface{}) (string, error) {
 	path := "."
 	if p, ok := args["path"].(string); ok && p != "" {
@@ -488,8 +616,20 @@ func searchFiles(args map[string]interface{}) (string, error) {
 	maxResults := 50
 
 	filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || len(results) >= maxResults {
+		if err != nil {
 			return nil
+		}
+
+		if info.IsDir() {
+			name := info.Name()
+			if skipDirs[name] || (len(name) > 0 && name[0] == '.') {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if len(results) >= maxResults {
+			return filepath.SkipAll
 		}
 
 		if pattern != "" {
@@ -500,6 +640,9 @@ func searchFiles(args map[string]interface{}) (string, error) {
 		}
 
 		if content != "" {
+			if info.Size() > 1024*1024 || isBinaryFile(p) {
+				return nil
+			}
 			data, err := os.ReadFile(p)
 			if err != nil || !strings.Contains(string(data), content) {
 				return nil

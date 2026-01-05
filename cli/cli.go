@@ -346,15 +346,30 @@ func toolHandler(p *tea.Program) func(tool string, args string) {
 	}
 }
 
-func getModelConfig(appConfig config.AppConfig) (ModelConfig, error) {
+func getModelConfig(appConfig config.AppConfig, requestedModel string) (ModelConfig, error) {
 	if len(appConfig.Models) == 0 {
 		return ModelConfig{}, fmt.Errorf("no models configured")
 	}
+
+	targetModel := appConfig.Preferences.DefaultModel
+	if requestedModel != "" {
+		targetModel = requestedModel
+	}
+
 	for _, model := range appConfig.Models {
-		if model.Name == appConfig.Preferences.DefaultModel {
+		if model.Name == targetModel {
 			return model, nil
 		}
 	}
+
+	if requestedModel != "" {
+		var available []string
+		for _, m := range appConfig.Models {
+			available = append(available, m.Name)
+		}
+		return ModelConfig{}, fmt.Errorf("model '%s' not found. Available: %s", requestedModel, strings.Join(available, ", "))
+	}
+
 	return appConfig.Models[0], nil
 }
 
@@ -385,7 +400,7 @@ func runQProgram(prompt string) {
 		os.Exit(1)
 	}
 
-	modelConfig, err := getModelConfig(appConfig)
+	modelConfig, err := getModelConfig(appConfig, modelFlag)
 	if err != nil {
 		config.PrintConfigErrorMessage(err)
 		os.Exit(1)
@@ -427,6 +442,8 @@ func runQProgram(prompt string) {
 	}
 }
 
+var modelFlag string
+
 var RootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "AI terminal assistant",
@@ -439,4 +456,8 @@ var RootCmd = &cobra.Command{
 		}
 		runQProgram(prompt)
 	},
+}
+
+func init() {
+	RootCmd.Flags().StringVarP(&modelFlag, "model", "m", "", "Model to use (e.g., gpt-4o, claude-sonnet, ollama-qwen)")
 }
