@@ -35,6 +35,9 @@ models:
           - wake_on_lan: Wake sleeping machine via WoL magic packet
           - spawn_agent: Spawn a sub-agent to work on complex tasks in background
           - list_agents/get_agent_result/wait_for_agent/cancel_agent: Manage sub-agents
+          - get_docs: Get documentation for commands (man, tldr, cheat.sh, --help)
+          - search_docs: Search cached documentation
+          - get_system_info: Get OS, packages, and services info
           
           Guidelines:
           - Just do what the user asks. Don't ask for confirmation unless destructive.
@@ -52,7 +55,7 @@ models:
     prompt:
       - role: system
         content: |
-          Fast terminal assistant. Tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan, spawn_agent, list_agents, get_agent_result, wait_for_agent. Be concise.
+          Fast terminal assistant. Tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan, spawn_agent, list_agents, get_agent_result, wait_for_agent, get_docs, search_docs, get_system_info. Be concise.
 
   - name: claude-sonnet
     model_name: anthropic/claude-sonnet-4-20250514
@@ -82,6 +85,8 @@ models:
           - wake_on_lan: Wake sleeping machine
           - spawn_agent: Spawn sub-agent for complex tasks
           - list_agents/get_agent_result/wait_for_agent: Manage sub-agents
+          - get_docs/search_docs: Documentation lookup and search
+          - get_system_info: OS and package information
           
           Just do what the user asks. Be direct and helpful. Use spawn_agent for complex autonomous work.
 
@@ -93,7 +98,7 @@ models:
     prompt:
       - role: system
         content: |
-          Terminal assistant with tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan, spawn_agent, list_agents, get_agent_result, wait_for_agent. Be concise. Use spawn_agent for complex autonomous subtasks.
+          Terminal assistant with tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan, spawn_agent, list_agents, get_agent_result, wait_for_agent, get_docs, search_docs, get_system_info. Be concise.
 
   - name: ollama-qwen
     model_name: qwen2.5-coder:7b

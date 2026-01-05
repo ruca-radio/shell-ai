@@ -123,6 +123,11 @@ The AI can use these tools autonomously:
 | `get_agent_result` | Get result from completed agent |
 | `wait_for_agent` | Wait for agent to complete |
 | `cancel_agent` | Cancel a running agent |
+| `get_docs` | Get docs (man, tldr, cheat.sh, --help) |
+| `search_docs` | Search cached documentation |
+| `list_docs` | List all cached docs |
+| `fetch_web_docs` | Fetch and cache docs from URL |
+| `get_system_info` | Get OS, packages, services info |
 
 ## Examples
 
@@ -199,6 +204,31 @@ q "review this codebase for security issues"
 ```
 
 Agents have access to all tools (file ops, commands, SSH, etc.) but cannot spawn other agents. They work in background and report results when done.
+
+### Documentation System
+
+Built-in documentation lookup with caching:
+
+```bash
+q "how do I use tar?"
+# Fetches from tldr, cheat.sh, man pages, or --help
+
+q "show me docker compose examples"
+# Gets practical examples from cheat.sh
+
+q "what's installed on this system?"
+# Lists packages, services, OS info
+
+q "search docs for 'network'"
+# Searches across all cached documentation
+```
+
+Documentation is cached locally with full-text search. Sources include:
+- **tldr pages**: Concise, practical examples
+- **cheat.sh**: Community-driven cheatsheets  
+- **man pages**: Official system documentation
+- **--help output**: Command help text
+- **Web docs**: Any URL you want to cache
 
 ## Configuration
 

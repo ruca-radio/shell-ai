@@ -109,6 +109,51 @@ CREATE INDEX IF NOT EXISTS idx_session_tags_session ON session_tags(session_id);
 CREATE INDEX IF NOT EXISTS idx_session_tags_tag ON session_tags(tag_id);
 
 -- ============================================================================
+-- Documentation Cache Tables
+-- ============================================================================
+
+-- Documentation entries table: Stores cached documentation
+CREATE TABLE IF NOT EXISTS docs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,
+    source          TEXT NOT NULL,
+    content         TEXT NOT NULL,
+    summary         TEXT,
+    version         TEXT,
+    fetched_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at      DATETIME,
+    UNIQUE (name, source)
+);
+
+-- Documentation FTS5 for full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts USING fts5(
+    name,
+    content,
+    summary,
+    content='docs',
+    content_rowid='id'
+);
+
+-- Triggers to keep docs FTS index synchronized
+CREATE TRIGGER IF NOT EXISTS docs_ai AFTER INSERT ON docs BEGIN
+    INSERT INTO docs_fts(rowid, name, content, summary) VALUES (NEW.id, NEW.name, NEW.content, NEW.summary);
+END;
+
+CREATE TRIGGER IF NOT EXISTS docs_ad AFTER DELETE ON docs BEGIN
+    INSERT INTO docs_fts(docs_fts, rowid, name, content, summary) VALUES('delete', OLD.id, OLD.name, OLD.content, OLD.summary);
+END;
+
+CREATE TRIGGER IF NOT EXISTS docs_au AFTER UPDATE ON docs BEGIN
+    INSERT INTO docs_fts(docs_fts, rowid, name, content, summary) VALUES('delete', OLD.id, OLD.name, OLD.content, OLD.summary);
+    INSERT INTO docs_fts(rowid, name, content, summary) VALUES (NEW.id, NEW.name, NEW.content, NEW.summary);
+END;
+
+-- Documentation indexes
+CREATE INDEX IF NOT EXISTS idx_docs_name ON docs(name);
+CREATE INDEX IF NOT EXISTS idx_docs_source ON docs(source);
+CREATE INDEX IF NOT EXISTS idx_docs_expires ON docs(expires_at);
+
+-- ============================================================================
 -- Trigger for updated_at
 -- ============================================================================
 

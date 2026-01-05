@@ -359,3 +359,173 @@ func (db *DB) DeleteOldSessions(olderThan time.Duration) (int64, error) {
 	}
 	return result.RowsAffected()
 }
+
+type Doc struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Source    string    `json:"source"`
+	Content   string    `json:"content"`
+	Summary   string    `json:"summary"`
+	Version   string    `json:"version"`
+	FetchedAt time.Time `json:"fetched_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type DocSearchResult struct {
+	ID      int64   `json:"id"`
+	Name    string  `json:"name"`
+	Source  string  `json:"source"`
+	Summary string  `json:"summary"`
+	Rank    float64 `json:"rank"`
+}
+
+func (db *DB) SaveDoc(name, source, content, summary, version string, ttl time.Duration) (*Doc, error) {
+	now := time.Now()
+	expiresAt := now.Add(ttl)
+
+	_, err := db.conn.Exec(`
+		INSERT INTO docs (name, source, content, summary, version, fetched_at, expires_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(name, source) DO UPDATE SET
+			content = excluded.content,
+			summary = excluded.summary,
+			version = excluded.version,
+			fetched_at = excluded.fetched_at,
+			expires_at = excluded.expires_at
+	`, name, source, content, summary, version, now, expiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save doc: %w", err)
+	}
+
+	return db.GetDoc(name, source)
+}
+
+func (db *DB) GetDoc(name, source string) (*Doc, error) {
+	row := db.conn.QueryRow(
+		"SELECT id, name, source, content, summary, version, fetched_at, expires_at FROM docs WHERE name = ? AND source = ?",
+		name, source,
+	)
+
+	var d Doc
+	var summary, version sql.NullString
+	var expiresAt sql.NullTime
+	err := row.Scan(&d.ID, &d.Name, &d.Source, &d.Content, &summary, &version, &d.FetchedAt, &expiresAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get doc: %w", err)
+	}
+
+	if summary.Valid {
+		d.Summary = summary.String
+	}
+	if version.Valid {
+		d.Version = version.String
+	}
+	if expiresAt.Valid {
+		d.ExpiresAt = expiresAt.Time
+	}
+
+	return &d, nil
+}
+
+func (db *DB) GetDocByName(name string) (*Doc, error) {
+	row := db.conn.QueryRow(
+		"SELECT id, name, source, content, summary, version, fetched_at, expires_at FROM docs WHERE name = ? ORDER BY fetched_at DESC LIMIT 1",
+		name,
+	)
+
+	var d Doc
+	var summary, version sql.NullString
+	var expiresAt sql.NullTime
+	err := row.Scan(&d.ID, &d.Name, &d.Source, &d.Content, &summary, &version, &d.FetchedAt, &expiresAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get doc: %w", err)
+	}
+
+	if summary.Valid {
+		d.Summary = summary.String
+	}
+	if version.Valid {
+		d.Version = version.String
+	}
+	if expiresAt.Valid {
+		d.ExpiresAt = expiresAt.Time
+	}
+
+	return &d, nil
+}
+
+func (db *DB) SearchDocs(query string, limit int) ([]DocSearchResult, error) {
+	rows, err := db.conn.Query(`
+		SELECT d.id, d.name, d.source, d.summary, bm25(docs_fts) as rank
+		FROM docs_fts
+		JOIN docs d ON docs_fts.rowid = d.id
+		WHERE docs_fts MATCH ?
+		ORDER BY rank
+		LIMIT ?
+	`, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search docs: %w", err)
+	}
+	defer rows.Close()
+
+	var results []DocSearchResult
+	for rows.Next() {
+		var r DocSearchResult
+		var summary sql.NullString
+		if err := rows.Scan(&r.ID, &r.Name, &r.Source, &summary, &r.Rank); err != nil {
+			return nil, err
+		}
+		if summary.Valid {
+			r.Summary = summary.String
+		}
+		results = append(results, r)
+	}
+	return results, nil
+}
+
+func (db *DB) ListDocs(limit int) ([]Doc, error) {
+	rows, err := db.conn.Query(
+		"SELECT id, name, source, summary, version, fetched_at FROM docs ORDER BY fetched_at DESC LIMIT ?",
+		limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list docs: %w", err)
+	}
+	defer rows.Close()
+
+	var docs []Doc
+	for rows.Next() {
+		var d Doc
+		var summary, version sql.NullString
+		if err := rows.Scan(&d.ID, &d.Name, &d.Source, &summary, &version, &d.FetchedAt); err != nil {
+			return nil, err
+		}
+		if summary.Valid {
+			d.Summary = summary.String
+		}
+		if version.Valid {
+			d.Version = version.String
+		}
+		docs = append(docs, d)
+	}
+	return docs, nil
+}
+
+func (db *DB) DeleteExpiredDocs() (int64, error) {
+	result, err := db.conn.Exec("DELETE FROM docs WHERE expires_at < ?", time.Now())
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+func (db *DB) DeleteDoc(name, source string) error {
+	_, err := db.conn.Exec("DELETE FROM docs WHERE name = ? AND source = ?", name, source)
+	return err
+}

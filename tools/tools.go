@@ -325,6 +325,16 @@ func ExecuteTool(name string, arguments string) (string, error) {
 		return waitForAgent(args)
 	case "cancel_agent":
 		return cancelAgent(args)
+	case "get_docs":
+		return getDocs(args)
+	case "search_docs":
+		return searchDocs(args)
+	case "list_docs":
+		return listDocs(args)
+	case "fetch_web_docs":
+		return fetchWebDocs(args)
+	case "get_system_info":
+		return getSystemInfo(args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}

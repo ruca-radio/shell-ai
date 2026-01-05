@@ -71,6 +71,7 @@ func NewLLMClient(cfg ModelConfig) *LLMClient {
 	}
 
 	tools.InitAgentConfig(cfg.Endpoint, cfg.ModelName, cfg.Auth, cfg.AuthHeader)
+	tools.InitDocsDB(client.db)
 
 	return client
 }
