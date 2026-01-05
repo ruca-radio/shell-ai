@@ -118,6 +118,11 @@ The AI can use these tools autonomously:
 | `port_scan` | Scan ports on a host |
 | `lan_scan` | Discover hosts on local network |
 | `wake_on_lan` | Wake sleeping machine via WoL |
+| `spawn_agent` | Spawn sub-agent for complex tasks |
+| `list_agents` | List spawned agents and status |
+| `get_agent_result` | Get result from completed agent |
+| `wait_for_agent` | Wait for agent to complete |
+| `cancel_agent` | Cancel a running agent |
 
 ## Examples
 
@@ -177,6 +182,23 @@ q "wake up my desktop" # requires MAC in command or asks
 q "upload config.yaml to server:/etc/app/"
 q "download logs from server:/var/log/app.log"
 ```
+
+### Sub-Agents (Parallel AI Workers)
+
+Shell-AI can spawn autonomous sub-agents to work on complex tasks in parallel:
+
+```bash
+q "analyze all the Python files in this project and suggest improvements"
+# Main AI spawns agents to analyze different parts concurrently
+
+q "research how to implement OAuth2 in Go and write me a summary"
+# Spawns a researcher agent while main AI continues
+
+q "review this codebase for security issues"
+# Agent autonomously reads files, analyzes patterns, reports findings
+```
+
+Agents have access to all tools (file ops, commands, SSH, etc.) but cannot spawn other agents. They work in background and report results when done.
 
 ## Configuration
 

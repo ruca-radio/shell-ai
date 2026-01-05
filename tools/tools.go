@@ -315,6 +315,16 @@ func ExecuteTool(name string, arguments string) (string, error) {
 		return wakeOnLan(args)
 	case "ssh_hosts":
 		return sshHosts(args)
+	case "spawn_agent":
+		return spawnAgent(args)
+	case "list_agents":
+		return listAgents(args)
+	case "get_agent_result":
+		return getAgentResult(args)
+	case "wait_for_agent":
+		return waitForAgent(args)
+	case "cancel_agent":
+		return cancelAgent(args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}

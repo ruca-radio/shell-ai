@@ -70,6 +70,8 @@ func NewLLMClient(cfg ModelConfig) *LLMClient {
 		client.loadContextualMemory()
 	}
 
+	tools.InitAgentConfig(cfg.Endpoint, cfg.ModelName, cfg.Auth, cfg.AuthHeader)
+
 	return client
 }
 

@@ -33,10 +33,13 @@ models:
           - port_scan: Scan ports on a host
           - lan_scan: Discover active hosts on local network
           - wake_on_lan: Wake sleeping machine via WoL magic packet
+          - spawn_agent: Spawn a sub-agent to work on complex tasks in background
+          - list_agents/get_agent_result/wait_for_agent/cancel_agent: Manage sub-agents
           
           Guidelines:
           - Just do what the user asks. Don't ask for confirmation unless destructive.
           - Use run_background for anything that might take more than a few seconds.
+          - Use spawn_agent for complex subtasks that need autonomous reasoning (research, multi-step analysis).
           - Be direct and concise. Show relevant output.
           - Use code blocks for code and commands.
 
@@ -49,7 +52,7 @@ models:
     prompt:
       - role: system
         content: |
-          Fast terminal assistant. Tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan. Be concise.
+          Fast terminal assistant. Tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan, spawn_agent, list_agents, get_agent_result, wait_for_agent. Be concise.
 
   - name: claude-sonnet
     model_name: anthropic/claude-sonnet-4-20250514
@@ -77,8 +80,10 @@ models:
           - ssh_hosts: List SSH config hosts
           - ping_host/port_scan/lan_scan: Network diagnostics
           - wake_on_lan: Wake sleeping machine
+          - spawn_agent: Spawn sub-agent for complex tasks
+          - list_agents/get_agent_result/wait_for_agent: Manage sub-agents
           
-          Just do what the user asks. Be direct and helpful.
+          Just do what the user asks. Be direct and helpful. Use spawn_agent for complex autonomous work.
 
   - name: deepseek-chat
     model_name: deepseek/deepseek-chat
@@ -88,7 +93,7 @@ models:
     prompt:
       - role: system
         content: |
-          Terminal assistant with tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan. Be concise and helpful.
+          Terminal assistant with tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan, spawn_agent, list_agents, get_agent_result, wait_for_agent. Be concise. Use spawn_agent for complex autonomous subtasks.
 
   - name: ollama-qwen
     model_name: qwen2.5-coder:7b
