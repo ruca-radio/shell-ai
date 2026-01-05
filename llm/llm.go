@@ -72,6 +72,7 @@ func NewLLMClient(cfg ModelConfig) *LLMClient {
 
 	tools.InitAgentConfig(cfg.Endpoint, cfg.ModelName, cfg.Auth, cfg.AuthHeader)
 	tools.InitDocsDB(client.db)
+	tools.InitKnowledgeDB(client.db)
 
 	return client
 }
@@ -81,37 +82,71 @@ func (c *LLMClient) loadContextualMemory() {
 		return
 	}
 
+	var contextBuilder strings.Builder
+
 	sessions, err := c.db.GetRecentSessions(c.projectPath, 5)
-	if err != nil || len(sessions) == 0 {
+	if err == nil && len(sessions) > 0 {
+		contextBuilder.WriteString("\n\n[Previous conversations in this directory:]\n")
+		messagesAdded := 0
+		maxMessages := 10
+		for _, sess := range sessions {
+			if sess.ID == c.sessionID {
+				continue
+			}
+			msgs, err := c.db.GetMessages(sess.ID)
+			if err != nil {
+				continue
+			}
+			for _, m := range msgs {
+				if messagesAdded >= maxMessages {
+					break
+				}
+				if m.Role == "user" || m.Role == "assistant" {
+					contextBuilder.WriteString(fmt.Sprintf("- %s: %s\n", m.Role, truncate(m.Content, 200)))
+					messagesAdded++
+				}
+			}
+		}
+	}
+
+	c.loadKnowledgeContext(&contextBuilder)
+
+	if contextBuilder.Len() > 0 && len(c.messages) > 0 {
+		c.messages[0].Content += contextBuilder.String()
+	}
+}
+
+func (c *LLMClient) loadKnowledgeContext(builder *strings.Builder) {
+	if c.db == nil {
 		return
 	}
 
-	var contextBuilder strings.Builder
-	contextBuilder.WriteString("\n\n[Previous conversations in this directory:]\n")
-
-	messagesAdded := 0
-	maxMessages := 10
-	for _, sess := range sessions {
-		if sess.ID == c.sessionID {
-			continue
-		}
-		msgs, err := c.db.GetMessages(sess.ID)
-		if err != nil {
-			continue
-		}
-		for _, m := range msgs {
-			if messagesAdded >= maxMessages {
-				break
+	recentEntities, err := c.db.GetRecentEntities(c.projectPath, "", 10)
+	if err == nil && len(recentEntities) > 0 {
+		builder.WriteString("\n[Recently learned knowledge:]\n")
+		for _, e := range recentEntities {
+			builder.WriteString(fmt.Sprintf("- [%s] %s", e.Type, e.Name))
+			if e.Value != "" {
+				builder.WriteString(fmt.Sprintf(": %s", truncate(e.Value, 80)))
 			}
-			if m.Role == "user" || m.Role == "assistant" {
-				contextBuilder.WriteString(fmt.Sprintf("- %s: %s\n", m.Role, truncate(m.Content, 200)))
-				messagesAdded++
-			}
+			builder.WriteString("\n")
 		}
 	}
 
-	if messagesAdded > 0 && len(c.messages) > 0 {
-		c.messages[0].Content += contextBuilder.String()
+	facts, err := c.db.GetFactsAbout("user", c.projectPath, 5)
+	if err == nil && len(facts) > 0 {
+		builder.WriteString("\n[Known user preferences:]\n")
+		for _, f := range facts {
+			builder.WriteString(fmt.Sprintf("- %s %s %s\n", f.Subject, f.Predicate, f.Object))
+		}
+	}
+
+	projectFacts, err := c.db.GetFactsAbout("project", c.projectPath, 5)
+	if err == nil && len(projectFacts) > 0 {
+		builder.WriteString("\n[Known project facts:]\n")
+		for _, f := range projectFacts {
+			builder.WriteString(fmt.Sprintf("- %s %s %s\n", f.Subject, f.Predicate, f.Object))
+		}
 	}
 }
 

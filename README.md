@@ -128,6 +128,20 @@ The AI can use these tools autonomously:
 | `list_docs` | List all cached docs |
 | `fetch_web_docs` | Fetch and cache docs from URL |
 | `get_system_info` | Get OS, packages, services info |
+| `learn_entity` | Learn entities (files, commands, errors, solutions) |
+| `learn_relation` | Learn relationships between entities |
+| `learn_fact` | Learn facts about the environment |
+| `learn_error_pattern` | Learn error patterns and their solutions |
+| `recall_knowledge` | Search the knowledge graph |
+| `recall_facts` | Get facts about a subject |
+| `find_error_solution` | Find learned solutions to errors |
+| `get_related` | Get related entities |
+| `knowledge_summary` | Get knowledge graph summary |
+| `start_watch` | Start self-healing watch mode |
+| `stop_watch` | Stop watch mode |
+| `watch_status` | Get watch mode status |
+| `trigger_build` | Manually trigger build and auto-repair |
+| `diagnose_error` | Analyze errors and suggest repairs |
 
 ## Examples
 
@@ -229,6 +243,54 @@ Documentation is cached locally with full-text search. Sources include:
 - **man pages**: Official system documentation
 - **--help output**: Command help text
 - **Web docs**: Any URL you want to cache
+
+### Knowledge Graph (Collective Intelligence)
+
+Shell-AI builds a knowledge graph about your environment over time:
+
+```bash
+q "remember that I prefer vim over nano"
+# Learns: user prefers vim
+
+q "this project uses postgres for the database"
+# Learns: project uses postgres
+
+q "what do you know about this project?"
+# Recalls all learned knowledge
+```
+
+The AI automatically:
+- Learns from errors you encounter and how they were fixed
+- Remembers file patterns and command preferences
+- Cross-pollinates knowledge across projects
+- Injects relevant knowledge into future conversations
+
+### Self-Healing Watch Mode
+
+Start autonomous error detection and repair:
+
+```bash
+q --watch
+# Or: q -w
+```
+
+In watch mode, shell-ai:
+1. Monitors your project for file changes
+2. Auto-detects build/test commands (go build, npm build, cargo build, etc.)
+3. Runs builds when files change
+4. Parses error output (Go, Rust, TypeScript, Python)
+5. Attempts automatic repairs using learned patterns
+6. Only notifies you if auto-repair fails
+
+```bash
+# Manual control
+q "start watching this project"
+q "what's the watch status?"
+q "diagnose this error: undefined variable x"
+q "stop watching"
+```
+
+Error patterns and solutions are learned over time. The more you use it, the smarter it gets at fixing your specific error patterns.
 
 ## Configuration
 

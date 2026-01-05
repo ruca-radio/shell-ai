@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"q/config"
 	"q/llm"
 	. "q/types"
 	"q/util"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -393,6 +395,62 @@ func readStdin() string {
 	return ""
 }
 
+func runWatchMode() {
+	appConfig, err := config.LoadAppConfig()
+	if err != nil {
+		config.PrintConfigErrorMessage(err)
+		os.Exit(1)
+	}
+
+	modelConfig, err := getModelConfig(appConfig, modelFlag)
+	if err != nil {
+		config.PrintConfigErrorMessage(err)
+		os.Exit(1)
+	}
+
+	if modelConfig.Auth != "" {
+		envKey := modelConfig.Auth
+		val := os.Getenv(envKey)
+		if val == "" {
+			printAPIKeyNotSetMessage(modelConfig)
+			os.Exit(1)
+		}
+		modelConfig.Auth = val
+	}
+
+	c := llm.NewLLMClient(modelConfig)
+	defer c.Close()
+
+	styleGreen := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	styleYellow := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	styleDim := lipgloss.NewStyle().Faint(true)
+
+	fmt.Println(styleGreen.Render("Shell-AI Watch Mode"))
+	fmt.Println(styleDim.Render("==================="))
+	fmt.Println()
+	fmt.Println("Monitoring for errors and auto-repairing...")
+	fmt.Println(styleDim.Render("Press Ctrl+C to stop"))
+	fmt.Println()
+
+	response, err := c.Query("Start watching this project for errors. Use start_watch to begin monitoring. Detect the build command automatically.")
+	if err != nil {
+		fmt.Printf("Error starting watch: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(styleYellow.Render("Watch started:"))
+	fmt.Println(response)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	<-sigChan
+
+	fmt.Println()
+	fmt.Println(styleDim.Render("Stopping watch mode..."))
+	c.Query("Stop watching. Use stop_watch.")
+	fmt.Println(styleGreen.Render("Watch mode stopped."))
+}
+
 func runQProgram(prompt string) {
 	appConfig, err := config.LoadAppConfig()
 	if err != nil {
@@ -443,6 +501,7 @@ func runQProgram(prompt string) {
 }
 
 var modelFlag string
+var watchFlag bool
 
 var RootCmd = &cobra.Command{
 	Use:   "q [request]",
@@ -454,10 +513,15 @@ var RootCmd = &cobra.Command{
 			config.RunConfigProgram(args)
 			return
 		}
+		if watchFlag {
+			runWatchMode()
+			return
+		}
 		runQProgram(prompt)
 	},
 }
 
 func init() {
 	RootCmd.Flags().StringVarP(&modelFlag, "model", "m", "", "Model to use (e.g., gpt-4o, claude-sonnet, ollama-qwen)")
+	RootCmd.Flags().BoolVarP(&watchFlag, "watch", "w", false, "Start in self-healing watch mode")
 }

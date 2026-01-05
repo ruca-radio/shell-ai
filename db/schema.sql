@@ -154,6 +154,108 @@ CREATE INDEX IF NOT EXISTS idx_docs_source ON docs(source);
 CREATE INDEX IF NOT EXISTS idx_docs_expires ON docs(expires_at);
 
 -- ============================================================================
+-- Knowledge Graph Tables (Collective Intelligence)
+-- ============================================================================
+
+-- Knowledge entities: files, commands, errors, solutions, patterns
+CREATE TABLE IF NOT EXISTS knowledge_entities (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    type            TEXT NOT NULL,  -- 'file', 'command', 'error', 'solution', 'pattern', 'preference'
+    name            TEXT NOT NULL,
+    value           TEXT,           -- optional value/content
+    project_path    TEXT,           -- which project this relates to (NULL = global)
+    first_seen      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    occurrence_count INTEGER DEFAULT 1,
+    UNIQUE (type, name, project_path)
+);
+
+-- Knowledge relationships: how entities connect
+CREATE TABLE IF NOT EXISTS knowledge_relations (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id       INTEGER NOT NULL,
+    relation        TEXT NOT NULL,  -- 'caused_by', 'fixed_with', 'similar_to', 'depends_on', 'prefers', 'often_uses'
+    target_id       INTEGER NOT NULL,
+    confidence      REAL DEFAULT 1.0,  -- 0.0 to 1.0
+    context         TEXT,           -- description of when this was learned
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    use_count       INTEGER DEFAULT 1,
+    FOREIGN KEY (source_id) REFERENCES knowledge_entities(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_id) REFERENCES knowledge_entities(id) ON DELETE CASCADE,
+    UNIQUE (source_id, relation, target_id)
+);
+
+-- Knowledge facts: standalone learned facts about the environment
+CREATE TABLE IF NOT EXISTS knowledge_facts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    category        TEXT NOT NULL,  -- 'system', 'preference', 'pattern', 'solution'
+    subject         TEXT NOT NULL,  -- what this fact is about
+    predicate       TEXT NOT NULL,  -- the relationship/property
+    object          TEXT NOT NULL,  -- the value
+    project_path    TEXT,           -- NULL = global
+    confidence      REAL DEFAULT 1.0,
+    source          TEXT,           -- where this was learned (session_id, auto-detected, etc)
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_verified   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    verification_count INTEGER DEFAULT 1,
+    UNIQUE (category, subject, predicate, project_path)
+);
+
+-- Error patterns: learned error signatures and their solutions
+CREATE TABLE IF NOT EXISTS error_patterns (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    error_signature TEXT NOT NULL,  -- normalized error pattern (regex-like)
+    error_type      TEXT NOT NULL,  -- 'compile', 'runtime', 'test', 'build', 'network', 'permission'
+    language        TEXT,           -- 'go', 'python', 'javascript', etc
+    root_cause      TEXT,           -- learned root cause
+    solution        TEXT,           -- learned solution
+    solution_command TEXT,          -- specific command that fixed it
+    success_count   INTEGER DEFAULT 0,
+    failure_count   INTEGER DEFAULT 0,
+    project_path    TEXT,           -- NULL = global pattern
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (error_signature, project_path)
+);
+
+-- Knowledge graph FTS for semantic search
+CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(
+    name,
+    value,
+    content='knowledge_entities',
+    content_rowid='id'
+);
+
+-- Triggers for knowledge_entities FTS
+CREATE TRIGGER IF NOT EXISTS knowledge_entities_ai AFTER INSERT ON knowledge_entities BEGIN
+    INSERT INTO knowledge_fts(rowid, name, value) VALUES (NEW.id, NEW.name, NEW.value);
+END;
+
+CREATE TRIGGER IF NOT EXISTS knowledge_entities_ad AFTER DELETE ON knowledge_entities BEGIN
+    INSERT INTO knowledge_fts(knowledge_fts, rowid, name, value) VALUES('delete', OLD.id, OLD.name, OLD.value);
+END;
+
+CREATE TRIGGER IF NOT EXISTS knowledge_entities_au AFTER UPDATE ON knowledge_entities BEGIN
+    INSERT INTO knowledge_fts(knowledge_fts, rowid, name, value) VALUES('delete', OLD.id, OLD.name, OLD.value);
+    INSERT INTO knowledge_fts(rowid, name, value) VALUES (NEW.id, NEW.name, NEW.value);
+END;
+
+-- Knowledge graph indexes
+CREATE INDEX IF NOT EXISTS idx_ke_type ON knowledge_entities(type);
+CREATE INDEX IF NOT EXISTS idx_ke_project ON knowledge_entities(project_path);
+CREATE INDEX IF NOT EXISTS idx_ke_name ON knowledge_entities(name);
+CREATE INDEX IF NOT EXISTS idx_kr_source ON knowledge_relations(source_id);
+CREATE INDEX IF NOT EXISTS idx_kr_target ON knowledge_relations(target_id);
+CREATE INDEX IF NOT EXISTS idx_kr_relation ON knowledge_relations(relation);
+CREATE INDEX IF NOT EXISTS idx_kf_category ON knowledge_facts(category);
+CREATE INDEX IF NOT EXISTS idx_kf_subject ON knowledge_facts(subject);
+CREATE INDEX IF NOT EXISTS idx_kf_project ON knowledge_facts(project_path);
+CREATE INDEX IF NOT EXISTS idx_ep_signature ON error_patterns(error_signature);
+CREATE INDEX IF NOT EXISTS idx_ep_type ON error_patterns(error_type);
+CREATE INDEX IF NOT EXISTS idx_ep_language ON error_patterns(language);
+
+-- ============================================================================
 -- Trigger for updated_at
 -- ============================================================================
 

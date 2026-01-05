@@ -335,6 +335,34 @@ func ExecuteTool(name string, arguments string) (string, error) {
 		return fetchWebDocs(args)
 	case "get_system_info":
 		return getSystemInfo(args)
+	case "learn_entity":
+		return learnEntity(args)
+	case "learn_relation":
+		return learnRelation(args)
+	case "learn_fact":
+		return learnFact(args)
+	case "learn_error_pattern":
+		return learnErrorPattern(args)
+	case "recall_knowledge":
+		return recallKnowledge(args)
+	case "recall_facts":
+		return recallFacts(args)
+	case "find_error_solution":
+		return findErrorSolution(args)
+	case "get_related":
+		return getRelated(args)
+	case "knowledge_summary":
+		return knowledgeSummary(args)
+	case "start_watch":
+		return startWatch(args)
+	case "stop_watch":
+		return stopWatch(args)
+	case "watch_status":
+		return watchStatus(args)
+	case "trigger_build":
+		return triggerBuild(args)
+	case "diagnose_error":
+		return diagnoseError(args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
