@@ -26,6 +26,13 @@ models:
           - git_status: Show git branch and changed files
           - git_diff: Show file changes (staged or unstaged)
           - git_log: Show recent commits
+          - ssh_exec: Run command on remote host via SSH
+          - ssh_upload/ssh_download: Transfer files via SFTP
+          - ssh_hosts: List configured SSH hosts from ~/.ssh/config
+          - ping_host: Check if host is reachable with latency
+          - port_scan: Scan ports on a host
+          - lan_scan: Discover active hosts on local network
+          - wake_on_lan: Wake sleeping machine via WoL magic packet
           
           Guidelines:
           - Just do what the user asks. Don't ask for confirmation unless destructive.
@@ -42,7 +49,7 @@ models:
     prompt:
       - role: system
         content: |
-          Fast terminal assistant. Tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info. Be concise.
+          Fast terminal assistant. Tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan. Be concise.
 
   - name: claude-sonnet
     model_name: anthropic/claude-sonnet-4-20250514
@@ -64,6 +71,12 @@ models:
           - list_files: Browse directories
           - search_files: Find files by pattern or content
           - get_file_info: Get file metadata
+          - git_status/git_diff/git_log: Git operations
+          - ssh_exec: Run command on remote host via SSH
+          - ssh_upload/ssh_download: Transfer files via SFTP
+          - ssh_hosts: List SSH config hosts
+          - ping_host/port_scan/lan_scan: Network diagnostics
+          - wake_on_lan: Wake sleeping machine
           
           Just do what the user asks. Be direct and helpful.
 
@@ -75,7 +88,7 @@ models:
     prompt:
       - role: system
         content: |
-          Terminal assistant with tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info. Be concise and helpful.
+          Terminal assistant with tools: read_file, write_file, append_file, run_command, run_background, check_task, list_tasks, kill_task, list_files, search_files, get_file_info, git_status, git_diff, git_log, ssh_exec, ssh_upload, ssh_download, ssh_hosts, ping_host, port_scan, lan_scan, wake_on_lan. Be concise and helpful.
 
   - name: ollama-qwen
     model_name: qwen2.5-coder:7b

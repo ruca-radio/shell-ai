@@ -110,6 +110,14 @@ The AI can use these tools autonomously:
 | `git_status` | Show branch and changed files |
 | `git_diff` | Show file changes |
 | `git_log` | Show recent commits |
+| `ssh_exec` | Run command on remote host via SSH |
+| `ssh_upload` | Upload file via SFTP |
+| `ssh_download` | Download file via SFTP |
+| `ssh_hosts` | List ~/.ssh/config hosts |
+| `ping_host` | Ping host with latency stats |
+| `port_scan` | Scan ports on a host |
+| `lan_scan` | Discover hosts on local network |
+| `wake_on_lan` | Wake sleeping machine via WoL |
 
 ## Examples
 
@@ -155,6 +163,19 @@ q "diff the staged changes"
 q "how do I reverse a string in rust?"
 q "regex to validate email"
 q "curl command to POST json"
+```
+
+### LAN & SSH Management
+
+```bash
+q "show my ssh hosts"
+q "run df -h on my server"
+q "ping 192.168.1.1"
+q "scan ports on nas.local"
+q "what devices are on my network?"
+q "wake up my desktop" # requires MAC in command or asks
+q "upload config.yaml to server:/etc/app/"
+q "download logs from server:/var/log/app.log"
 ```
 
 ## Configuration

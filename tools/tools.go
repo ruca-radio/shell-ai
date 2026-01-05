@@ -299,6 +299,22 @@ func ExecuteTool(name string, arguments string) (string, error) {
 		return gitDiff(args)
 	case "git_log":
 		return gitLog(args)
+	case "ssh_exec":
+		return sshExec(args)
+	case "ssh_upload":
+		return sshUpload(args)
+	case "ssh_download":
+		return sshDownload(args)
+	case "ping_host":
+		return pingHost(args)
+	case "port_scan":
+		return portScan(args)
+	case "lan_scan":
+		return lanScan(args)
+	case "wake_on_lan":
+		return wakeOnLan(args)
+	case "ssh_hosts":
+		return sshHosts(args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
