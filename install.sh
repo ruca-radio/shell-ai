@@ -48,6 +48,28 @@ check_git() {
     success "Git detected"
 }
 
+cleanup_old() {
+    info "Removing old Shell-AI files/configs..."
+    OLD_PATHS=(
+        "$INSTALL_DIR/shell-ai"
+        "$INSTALL_DIR/shell-ai.exe"
+        "$INSTALL_DIR/q.exe"
+        "/usr/local/bin/shell-ai"
+        "/usr/local/bin/q"
+        "$HOME/.shell-ai/config.yml"
+        "$HOME/.shell-ai/config.yaml.bak"
+        "$HOME/.shell-ai/config.yml.bak"
+    )
+    for p in "${OLD_PATHS[@]}"; do
+        if [[ -e "$p" ]]; then
+            rm -rf "$p"
+        fi
+    done
+    if [[ -f "$DATA_DIR/config.yaml" ]]; then
+        rm -f "$DATA_DIR/config.yaml"
+    fi
+}
+
 create_directories() {
     info "Creating directories..."
     
@@ -183,6 +205,7 @@ main() {
     
     check_git
     check_go
+    cleanup_old
     create_directories
     build_shell_ai
     setup_path

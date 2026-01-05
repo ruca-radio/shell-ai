@@ -490,13 +490,30 @@ func runQProgram(prompt string) {
 
 	c := llm.NewLLMClient(modelConfig)
 	defer c.Close()
-	p := tea.NewProgram(initialModel(prompt, c, modelConfig.Name))
-	c.StreamCallback = streamHandler(p)
-	c.ToolCallback = toolHandler(p)
 
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+	// Detect if running in interactive mode (no args and stdin is a terminal)
+	stat, _ := os.Stdin.Stat()
+	isStdinTerminal := (stat.Mode() & os.ModeCharDevice) != 0
+	isInteractive := prompt == "" && isStdinTerminal
+
+	if isInteractive {
+		// Interactive mode: use bubbletea TUI
+		p := tea.NewProgram(initialModel(prompt, c, modelConfig.Name))
+		c.StreamCallback = streamHandler(p)
+		c.ToolCallback = toolHandler(p)
+
+		if _, err := p.Run(); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Non-interactive mode: direct execution without TUI
+		response, err := c.Query(prompt)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(response)
 	}
 }
 

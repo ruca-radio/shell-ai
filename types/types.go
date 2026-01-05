@@ -17,7 +17,21 @@ type Message struct {
 }
 
 type Preferences struct {
-	DefaultModel string `yaml:"default_model"`
+	DefaultModel     string `yaml:"default_model"`
+	SaveHistory      bool   `yaml:"save_history,omitempty"`
+	MaxHistoryDays   int    `yaml:"max_history_days,omitempty"`
+	EnableKnowledge  bool   `yaml:"enable_knowledge,omitempty"`
+	StreamResponses  bool   `yaml:"stream_responses,omitempty"`
+	ShowToolActivity bool   `yaml:"show_tool_activity,omitempty"`
+	DefaultTimeout   int    `yaml:"default_timeout,omitempty"`
+	AutoCopyCode     bool   `yaml:"auto_copy_code,omitempty"`
+}
+
+type ProviderPreset struct {
+	Name       string `yaml:"name"`
+	Endpoint   string `yaml:"endpoint"`
+	AuthEnvVar string `yaml:"auth_env_var"`
+	AuthHeader string `yaml:"auth_header"`
 }
 
 type Payload struct {

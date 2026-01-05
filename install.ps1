@@ -30,6 +30,20 @@ if (-not (IsUserAdministrator)) {
     exit 1
 }
 
+function Remove-OldShellAI {
+    $paths = @(
+        "C:\Program Files\shell-ai\shell-ai.exe",
+        "C:\Program Files\shell-ai\q.exe",
+        "C:\Program Files\shell-ai\q",
+        "$env:USERPROFILE\.shell-ai\config.yaml",
+        "$env:USERPROFILE\.shell-ai\config.yml",
+        "$env:USERPROFILE\.shell-ai\config.yaml.bak"
+    )
+    foreach ($p in $paths) {
+        if (Test-Path $p) { Remove-Item -Force -Recurse $p }
+    }
+}
+
 # Detect the platform (architecture and OS)
 $ARCH = $null
 $OS = "Windows"
@@ -46,6 +60,8 @@ if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") {
 if ($env:OS -notmatch "Windows") {
     Write-Host "You are running the powershell script on a non-windows platform. Please use the install.sh script instead."
 }
+
+Remove-OldShellAI
 
 # Fetch the latest release tag from GitHub API
 $API_URL = "https://api.github.com/repos/$repoowner/$reponame/releases/latest"

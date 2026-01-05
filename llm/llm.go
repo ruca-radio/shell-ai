@@ -32,6 +32,12 @@ type LLMClient struct {
 }
 
 func NewLLMClient(cfg ModelConfig) *LLMClient {
+	// Fallback: if ModelName is empty, use Name as the model identifier
+	// This provides backwards compatibility with older config files
+	if cfg.ModelName == "" && cfg.Name != "" {
+		cfg.ModelName = cfg.Name
+	}
+
 	msgs := append([]Message(nil), cfg.Prompt...)
 	if len(msgs) > 0 && msgs[0].Role == "system" {
 		osInfo := util.GetOSInfo()
